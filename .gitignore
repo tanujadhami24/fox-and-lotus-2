@@ -1,0 +1,19 @@
+# Dependencies
+node_modules/
+Fox and Lotus/node_modules/
+backend/node_modules/
+
+# Production builds
+Fox and Lotus/dist/
+dist/
+
+# Local configuration & secrets
+backend/.env
+.env
+
+# Tool directories & temp logs
+.gemini/
+.antigravity/
+*.log
+.DS_Store
+Thumbs.db

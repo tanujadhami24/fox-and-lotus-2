@@ -1,0 +1,391 @@
+/* ==========================================================================
+   STYLE SYSTEM: SOUL FUEL LITE (FOX & LOTUS)
+   Blending: Neo-Brutalism, Y2K / Retro Futurism, Psychedelic Pop Art, 
+             and Experimental E-commerce
+   ========================================================================== */
+
+/* 1. THEME DEFINITIONS & CUSTOM PROPERTIES */
+:root {
+  /* Common Brand Colors */
+  --color-black: #000000;
+  --color-white: #ffffff;
+  --color-cream: #faf6f0;
+  
+  /* Fonts */
+  --font-header: 'Syne', sans-serif;
+  --font-body: 'Space Grotesk', sans-serif;
+  --font-tech: 'Outfit', sans-serif;
+
+  /* Common Layout & Styling */
+  --border-width: 4px;
+  --border-width-thin: 2px;
+  --neo-border: var(--border-width) solid var(--color-black);
+  --neo-border-thin: var(--border-width-thin) solid var(--color-black);
+  --y2k-glow: 0 0 15px rgba(255, 255, 255, 0.4);
+}
+
+/* Flavor Theme 1: Cheese & Herbs (Yellow & Herb Green Theme) */
+[data-flavor="cheese"] {
+  --theme-bg: #ffd15c; /* Rich yellow */
+  --theme-accent: #a3e635; /* Herb green */
+  --theme-accent-dark: #15803d; /* Forest green */
+  --theme-secondary: #ff7b00; /* Warm orange */
+  --theme-card-bg: #fffcf4;
+  --theme-text: #0d0a05;
+  --theme-text-light: #524732;
+  --theme-shadow-color: #000000;
+  --theme-glow: rgba(163, 230, 53, 0.4);
+  --grid-color: rgba(13, 10, 5, 0.08);
+}
+
+/* Flavor Theme 2: Honey Chilli (Chilli Red & Warm Honey Theme) */
+[data-flavor="chilli"] {
+  --theme-bg: #e11d48; /* Crimson red */
+  --theme-accent: #f59e0b; /* Hot Honey yellow-orange */
+  --theme-accent-dark: #b45309; /* Deep honey */
+  --theme-secondary: #000000; /* Contrast black */
+  --theme-card-bg: #fff5f5;
+  --theme-text: #170206;
+  --theme-text-light: #6b21a8;
+  --theme-shadow-color: #000000;
+  --theme-glow: rgba(245, 158, 11, 0.4);
+  --grid-color: rgba(23, 2, 6, 0.08);
+}
+
+/* Flavor Theme 3: Pink Salt (Bubblegum Pink & Electric Cyber Theme) */
+[data-flavor="salt"] {
+  --theme-bg: #ec4899; /* Bubblegum Pink */
+  --theme-accent: #06b6d4; /* Cyber Cyan */
+  --theme-accent-dark: #4f46e5; /* Deep Purple */
+  --theme-secondary: #f472b6; /* Soft pink */
+  --theme-card-bg: #fdf2f8;
+  --theme-text: #1e051c;
+  --theme-text-light: #701a75;
+  --theme-shadow-color: #000000;
+  --theme-glow: rgba(6, 182, 212, 0.4);
+  --grid-color: rgba(30, 5, 28, 0.08);
+}
+
+/* 2. BASE RESET & PAGE STRUCTURE */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  transition: background-color 0.6s cubic-bezier(0.25, 0.8, 0.25, 1), 
+              border-color 0.6s cubic-bezier(0.25, 0.8, 0.25, 1), 
+              color 0.4s ease;
+}
+
+body {
+  font-family: var(--font-body);
+  background-color: var(--theme-bg);
+  color: var(--theme-text);
+  overflow-x: hidden;
+  position: relative;
+  min-height: 100vh;
+  /* Y2K Dot Matrix Grid Overlay */
+  background-image: radial-gradient(var(--grid-color) 1.5px, transparent 1.5px);
+  background-size: 24px 24px;
+}
+
+/* Custom Scrollbar (Brutalist style) */
+::-webkit-scrollbar {
+  width: 14px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-black);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--theme-accent);
+  border: 3px solid var(--color-black);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--theme-secondary);
+}
+
+/* 3. NEO-BRUTALISM UTILITIES */
+.neo-box {
+  background-color: var(--theme-card-bg);
+  border: var(--neo-border);
+  box-shadow: 6px 6px 0px 0px var(--theme-shadow-color);
+  position: relative;
+}
+
+.neo-box-interactive {
+  background-color: var(--theme-card-bg);
+  border: var(--neo-border);
+  box-shadow: 6px 6px 0px 0px var(--theme-shadow-color);
+  position: relative;
+  cursor: pointer;
+}
+.neo-box-interactive:hover {
+  transform: translate(-3px, -3px);
+  box-shadow: 9px 9px 0px 0px var(--theme-shadow-color);
+}
+.neo-box-interactive:active {
+  transform: translate(3px, 3px);
+  box-shadow: 3px 3px 0px 0px var(--theme-shadow-color);
+}
+
+.neo-btn {
+  font-family: var(--font-body);
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 12px 28px;
+  background-color: var(--theme-accent);
+  color: var(--color-black);
+  border: var(--neo-border);
+  box-shadow: 5px 5px 0px 0px var(--color-black);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 1rem;
+  letter-spacing: 0.5px;
+  position: relative;
+  overflow: hidden;
+}
+.neo-btn:hover {
+  transform: translate(-3px, -3px);
+  box-shadow: 8px 8px 0px 0px var(--color-black);
+  background-color: var(--theme-secondary);
+}
+.neo-btn:active {
+  transform: translate(2px, 2px);
+  box-shadow: 3px 3px 0px 0px var(--color-black);
+}
+
+/* Stark typography styles */
+h1, h2, h3, h4 {
+  font-family: var(--font-header);
+  text-transform: uppercase;
+  line-height: 0.9;
+  letter-spacing: -0.03em;
+}
+
+/* 4. Y2K / RETRO-FUTURISM UTILITIES */
+.y2k-grid {
+  background-image: 
+    linear-gradient(var(--grid-color) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+.y2k-glass {
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow: inset 0 0 12px rgba(255, 255, 255, 0.2);
+}
+
+.y2k-chrome-text {
+  background: linear-gradient(
+    180deg, 
+    #ffffff 0%, 
+    #c4b5fd 40%, 
+    #000000 50%, 
+    #a5f3fc 60%, 
+    #ffffff 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(2px 2px 0px #000);
+}
+
+/* Starburst / Cross vectors */
+.y2k-starburst {
+  position: relative;
+  display: inline-block;
+  animation: rotate-slow 20s linear infinite;
+}
+
+/* Running Marquee Ticker Tape */
+.marquee-container {
+  overflow: hidden;
+  white-space: nowrap;
+  border-top: var(--neo-border);
+  border-bottom: var(--neo-border);
+  background-color: var(--color-black);
+  color: var(--color-white);
+  padding: 10px 0;
+  font-family: var(--font-tech);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  font-size: 1.1rem;
+}
+
+.marquee-content {
+  display: inline-block;
+  animation: marquee 20s linear infinite;
+  padding-left: 100%;
+}
+
+.marquee-item {
+  display: inline-flex;
+  align-items: center;
+  margin-right: 50px;
+}
+
+.marquee-item span {
+  margin-left: 15px;
+  color: var(--theme-accent);
+}
+
+/* 5. PSYCHEDELIC POP ART UTILITIES */
+.pop-pattern {
+  background-image: radial-gradient(circle, var(--theme-accent) 20%, transparent 20%),
+                    radial-gradient(circle, var(--theme-secondary) 20%, transparent 20%);
+  background-size: 20px 20px;
+  background-position: 0 0, 10px 10px;
+}
+
+.organic-blob {
+  border-radius: 43% 57% 41% 59% / 57% 45% 55% 43%;
+  animation: blob-morph 8s ease-in-out infinite alternate;
+}
+
+/* Liquid wavy dividers */
+.wavy-border {
+  position: relative;
+  height: 50px;
+  width: 100%;
+  background: var(--color-black);
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 120' preserveAspectRatio='none'%3E%3Cpath d='M0,0V46.29c47.79,22.2,103.59,32.17,158,28,70.36-5.37,136.33-33.31,206.8-37.5C438.64,32.43,512.34,53.67,583,72.05c69.27,18,138.3,24.88,209.4,13.08,36.15-6,69.85-17.84,104.45-29.34C989.49,25,1113-14.29,1200,42.4V0Z' fill='%23000000'/%3E%3C/svg%3E");
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 120' preserveAspectRatio='none'%3E%3Cpath d='M0,0V46.29c47.79,22.2,103.59,32.17,158,28,70.36-5.37,136.33-33.31,206.8-37.5C438.64,32.43,512.34,53.67,583,72.05c69.27,18,138.3,24.88,209.4,13.08,36.15-6,69.85-17.84,104.45-29.34C989.49,25,1113-14.29,1200,42.4V0Z' fill='%23000000'/%3E%3C/svg%3E");
+  mask-size: cover;
+  -webkit-mask-size: cover;
+}
+
+/* 6. KEYFRAMES & ANIMATIONS */
+@keyframes marquee {
+  0% { transform: translate3d(0, 0, 0); }
+  100% { transform: translate3d(-100%, 0, 0); }
+}
+
+@keyframes float {
+  0% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-12px) rotate(2deg); }
+  100% { transform: translateY(0px) rotate(0deg); }
+}
+
+@keyframes float-slow {
+  0% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-18px) rotate(-3deg); }
+  100% { transform: translateY(0px) rotate(0deg); }
+}
+
+@keyframes rotate-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes blob-morph {
+  0% { border-radius: 43% 57% 41% 59% / 57% 45% 55% 43%; }
+  50% { border-radius: 60% 40% 65% 35% / 40% 60% 40% 60%; }
+  100% { border-radius: 40% 60% 35% 65% / 65% 35% 60% 40%; }
+}
+
+@keyframes pulse-glow {
+  0% { box-shadow: 0 0 10px var(--theme-glow); }
+  50% { box-shadow: 0 0 25px var(--theme-glow); }
+  100% { box-shadow: 0 0 10px var(--theme-glow); }
+}
+
+@keyframes crunch-shake {
+  0% { transform: scale(1) rotate(0); }
+  10% { transform: scale(0.9) rotate(-3deg); }
+  30% { transform: scale(1.15) rotate(3deg); }
+  50% { transform: scale(0.95) rotate(-2deg); }
+  75% { transform: scale(1.05) rotate(2deg); }
+  100% { transform: scale(1) rotate(0); }
+}
+
+/* Classes for animation triggering */
+.animate-float {
+  animation: float 5s ease-in-out infinite;
+}
+
+.animate-float-slow {
+  animation: float-slow 7s ease-in-out infinite;
+}
+
+.animate-rotate {
+  animation: rotate-slow 15s linear infinite;
+}
+
+.crunching {
+  animation: crunch-shake 0.4s cubic-bezier(.36,.07,.19,.97) both;
+}
+
+/* 7. EXPERIMENTAL LAYOUT / CONTAINER CLASSES */
+.site-wrapper {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+.hero-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 40px;
+  align-items: center;
+  padding: 80px 0 120px 0;
+}
+
+@media (max-width: 968px) {
+  .hero-grid {
+    grid-template-columns: 1fr;
+    text-align: center;
+    padding: 40px 0 80px 0;
+  }
+}
+
+/* Sound Wave bars styling */
+.sound-wave {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 40px;
+}
+
+.sound-bar {
+  width: 6px;
+  background-color: var(--color-black);
+  border-radius: 3px;
+  height: 20%;
+  transition: height 0.1s ease;
+}
+
+.sound-wave.active .sound-bar {
+  animation: wave-bounce 0.6s ease infinite alternate;
+}
+
+.sound-bar:nth-child(2) { animation-delay: 0.1s !important; }
+.sound-bar:nth-child(3) { animation-delay: 0.2s !important; }
+.sound-bar:nth-child(4) { animation-delay: 0.15s !important; }
+.sound-bar:nth-child(5) { animation-delay: 0.3s !important; }
+.sound-bar:nth-child(6) { animation-delay: 0.05s !important; }
+
+@keyframes wave-bounce {
+  0% { height: 15%; }
+  100% { height: 100%; }
+}
+
+/* 9. CART BOUNCE ANIMATION */
+@keyframes cartBounce {
+  0% { transform: scale(1); }
+  30% { transform: scale(1.25) rotate(-10deg); }
+  50% { transform: scale(1.25) rotate(10deg); }
+  70% { transform: scale(1.1) rotate(-5deg); }
+  85% { transform: scale(1.1) rotate(5deg); }
+  100% { transform: scale(1) rotate(0); }
+}
+
+.cart-bounce-active {
+  animation: cartBounce 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+}
+
+
