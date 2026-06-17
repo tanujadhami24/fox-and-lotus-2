@@ -374,7 +374,6 @@ function App() {
   });
 
   const [ordersList, setOrdersList] = useState([]);
-  const [token, setToken] = useState(localStorage.getItem('soul_token') || '');
   
   const [usersDb, setUsersDb] = useState(() => {
     const saved = localStorage.getItem('soul_users_db');
@@ -430,35 +429,15 @@ function App() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Effect to load user-specific orders from the database
-  const fetchUserOrders = async (authToken) => {
-    try {
-      const res = await fetch('http://localhost:5000/api/orders/my-orders', {
-        headers: { 'Authorization': `Bearer ${authToken}` }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        const formatted = data.map(o => ({
-          id: o.razorpayOrderId,
-          date: new Date(o.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-          items: o.items.map(item => `${item.qty}x ${item.name.replace('Roasted Makhana - ', '')}`).join(', '),
-          total: o.total,
-          status: o.status
-        }));
-        setOrdersList(formatted);
-      }
-    } catch (err) {
-      console.error('Failed to load user orders:', err);
-    }
-  };
-
+  // Effect to load user-specific orders whenever user state changes
   useEffect(() => {
-    if (token) {
-      fetchUserOrders(token);
+    if (user) {
+      const savedOrders = localStorage.getItem(`soul_orders_${user.phone}`);
+      setOrdersList(savedOrders ? JSON.parse(savedOrders) : []);
     } else {
       setOrdersList([]);
     }
-  }, [token]);
+  }, [user]);
 
   // Effect to save user-specific cart whenever cart state changes
   useEffect(() => {
@@ -474,9 +453,8 @@ function App() {
     }
   }, [wishlist, user]);
 
-  const handleAddressChange = async (e) => {
-    const newAddress = e.target.value;
-    const updatedUser = { ...user, address: newAddress };
+  const handleAddressChange = (e) => {
+    const updatedUser = { ...user, address: e.target.value };
     setUser(updatedUser);
     localStorage.setItem('soul_user', JSON.stringify(updatedUser));
     
@@ -484,22 +462,6 @@ function App() {
     const updatedDb = { ...usersDb, [user.phone]: updatedUser };
     setUsersDb(updatedDb);
     localStorage.setItem('soul_users_db', JSON.stringify(updatedDb));
-
-    // Sync to backend database
-    if (token) {
-      try {
-        await fetch('http://localhost:5000/api/auth/profile', {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({ address: newAddress })
-        });
-      } catch (err) {
-        console.error('Failed to sync address change to server:', err);
-      }
-    }
   };
 
   const handlePhoneChange = (e) => {
@@ -516,52 +478,28 @@ function App() {
     });
   };
 
-  const handleRequestOtp = async (e) => {
+  const handleRequestOtp = (e) => {
     e.preventDefault();
     if (!loginForm.name || !loginForm.email || !loginForm.phone || !loginForm.address) return;
     setLoginError('');
     playSound('laser', isMuted);
-
-    try {
-      const res = await fetch('http://localhost:5000/api/auth/send-otp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(loginForm)
+    const code = Math.floor(1000 + Math.random() * 9000).toString();
+    setGeneratedOtp(code);
+    setOtpSent(true);
+    setSmsToast({
+      visible: true,
+      message: `System access request for ${loginForm.name}. Verify your session to unlock S-Tier snacks.`,
+      code: code
+    });
+    // Auto-dismiss SMS toast after 12 seconds
+    setTimeout(() => {
+      setSmsToast(prev => {
+        if (prev.code === code) {
+          return { visible: false, message: '', code: '' };
+        }
+        return prev;
       });
-
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || 'Failed to dispatch code');
-      }
-
-      setOtpSent(true);
-      setSmsToast({
-        visible: true,
-        message: `OTP sent to ${loginForm.email}. Please verify your inbox.`,
-        code: 'SENT'
-      });
-      setTimeout(() => {
-        setSmsToast({ visible: false, message: '', code: '' });
-      }, 10000);
-    } catch (err) {
-      console.warn('Backend OTP request failed, falling back to local simulation:', err);
-      const code = Math.floor(1000 + Math.random() * 9000).toString();
-      setGeneratedOtp(code);
-      setOtpSent(true);
-      setSmsToast({
-        visible: true,
-        message: `[MOCK SMS] System access code for ${loginForm.name}: ${code}. (Using offline simulation)`,
-        code: code
-      });
-      setTimeout(() => {
-        setSmsToast(prev => {
-          if (prev.code === code) {
-            return { visible: false, message: '', code: '' };
-          }
-          return prev;
-        });
-      }, 12000);
-    }
+    }, 12000);
   };
 
   const handleOtpDigitChange = (value, idx) => {
@@ -576,75 +514,38 @@ function App() {
     }
   };
 
-  const handleVerifyOtp = async (e) => {
+  const handleVerifyOtp = (e) => {
     e.preventDefault();
     const entered = otpDigits.join('');
-    setLoginError('');
-    playSound('laser', isMuted);
-
-    try {
-      const res = await fetch('http://localhost:5000/api/auth/verify-otp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...loginForm,
-          otp: entered
-        })
-      });
-
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || 'Verification failed');
-      }
-
-      const verifiedUser = await res.json();
+    if (entered === generatedOtp) {
+      playSound('laser', isMuted);
+      const loggedInUser = { ...loginForm };
       
-      setUser(verifiedUser);
-      setToken(verifiedUser.token);
-      localStorage.setItem('soul_user', JSON.stringify(verifiedUser));
-      localStorage.setItem('soul_token', verifiedUser.token);
+      // Save user session
+      setUser(loggedInUser);
+      localStorage.setItem('soul_user', JSON.stringify(loggedInUser));
 
-      const updatedDb = { ...usersDb, [verifiedUser.phone]: verifiedUser };
+      // Save to users database
+      const updatedDb = { ...usersDb, [loginForm.phone]: loggedInUser };
       setUsersDb(updatedDb);
       localStorage.setItem('soul_users_db', JSON.stringify(updatedDb));
 
-      const savedCart = localStorage.getItem(`soul_cart_${verifiedUser.phone}`);
+      // Load user specific cart if any exists
+      const savedCart = localStorage.getItem(`soul_cart_${loginForm.phone}`);
       setCart(savedCart ? JSON.parse(savedCart) : []);
 
-      const savedWishlist = localStorage.getItem(`soul_wishlist_${verifiedUser.phone}`);
+      // Load user specific wishlist if any exists
+      const savedWishlist = localStorage.getItem(`soul_wishlist_${loginForm.phone}`);
       setWishlist(savedWishlist ? JSON.parse(savedWishlist) : []);
 
-      fetchUserOrders(verifiedUser.token);
+      setShowLoginModal(false);
       setOtpSent(false);
       setOtpDigits(['', '', '', '']);
-      setShowLoginModal(false);
-    } catch (err) {
-      console.warn('Backend OTP verification failed, falling back to local simulation:', err);
-      if (generatedOtp && entered === generatedOtp) {
-        const loggedInUser = { ...loginForm };
-        setUser(loggedInUser);
-        localStorage.setItem('soul_user', JSON.stringify(loggedInUser));
-
-        const updatedDb = { ...usersDb, [loginForm.phone]: loggedInUser };
-        setUsersDb(updatedDb);
-        localStorage.setItem('soul_users_db', JSON.stringify(updatedDb));
-
-        const savedCart = localStorage.getItem(`soul_cart_${loginForm.phone}`);
-        setCart(savedCart ? JSON.parse(savedCart) : []);
-
-        const savedWishlist = localStorage.getItem(`soul_wishlist_${loginForm.phone}`);
-        setWishlist(savedWishlist ? JSON.parse(savedWishlist) : []);
-
-        const savedOrders = localStorage.getItem(`soul_orders_${loginForm.phone}`);
-        setOrdersList(savedOrders ? JSON.parse(savedOrders) : []);
-
-        setOtpSent(false);
-        setOtpDigits(['', '', '', '']);
-        setShowLoginModal(false);
-      } else {
-        playSound('crunch', isMuted);
-        setLoginError("⛔ SYSTEM ACCESS REJECTED: KEYCODE MISMATCH.");
-      }
+      setSmsToast({ visible: false, message: '', code: '' });
+      setLoginError('');
+    } else {
+      playSound('crunch', isMuted);
+      setLoginError("⛔ SYSTEM ACCESS REJECTED: KEYCODE MISMATCH.");
     }
   };
 
@@ -976,7 +877,7 @@ function App() {
 
 
   // Dynamic Product details based on current theme flavor
-  const [products, setProducts] = useState([
+  const products = [
     {
       id: 'cheese',
       name: 'Cheese & Herbs',
@@ -1025,24 +926,7 @@ function App() {
       offerCode: 'SALTYVIBES',
       offerLabel: 'Flat ₹30 OFF returning orders'
     }
-  ]);
-
-  useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        const res = await fetch('http://localhost:5000/api/products');
-        if (res.ok) {
-          const data = await res.json();
-          if (data && data.length > 0) {
-            setProducts(data);
-          }
-        }
-      } catch (err) {
-        console.warn('Backend products fetch failed, using fallback static data:', err);
-      }
-    };
-    fetchProducts();
-  }, []);
+  ];
 
   const currentThemeProduct = products.find(p => p.flavorName === flavor) || products[0];
 
@@ -2211,121 +2095,41 @@ function App() {
               }}>
                 {/* Left Column: Contact, Delivery, Payment */}
                 <form
-                  onSubmit={async (e) => {
+                  onSubmit={(e) => {
                     e.preventDefault();
                     playSound('laser', isMuted);
+                    triggerConfetti();
 
-                    try {
-                      const res = await fetch('http://localhost:5000/api/orders/checkout', {
-                        method: 'POST',
-                        headers: {
-                          'Content-Type': 'application/json',
-                          'Authorization': `Bearer ${token}`
-                        },
-                        body: JSON.stringify({
-                          items: checkoutItems,
-                          discountCode: discountCode
-                        })
-                      });
+                    const orderId = `SOUL-${Math.floor(100000 + Math.random() * 900000)}`;
+                    setCheckoutOrderId(orderId);
+                    
+                    // Create order record
+                    const baseSubtotal = checkoutItems.reduce((acc, curr) => acc + (curr.price * curr.qty), 0);
+                    const finalSubtotal = baseSubtotal * (1 - appliedDiscount);
+                    const shippingCost = finalSubtotal >= 500 ? 0 : 40;
+                    const finalTotal = finalSubtotal + shippingCost;
 
-                      if (!res.ok) {
-                        const errData = await res.json();
-                        throw new Error(errData.message || 'Checkout failed');
-                      }
-
-                      const checkoutData = await res.json();
-                      const { razorpayOrderId, amount, currency, key } = checkoutData;
-
-                      if (razorpayOrderId.startsWith('order_mock_')) {
-                        // Mock checkout verification
-                        const verifyRes = await fetch('http://localhost:5000/api/orders/verify-payment', {
-                          method: 'POST',
-                          headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${token}`
-                          },
-                          body: JSON.stringify({
-                            razorpayOrderId,
-                            razorpayPaymentId: `pay_mock_${Math.floor(100000 + Math.random() * 900000)}`
-                          })
-                        });
-
-                        if (!verifyRes.ok) {
-                          const verifyErr = await verifyRes.json();
-                          throw new Error(verifyErr.message || 'Mock verification failed');
-                        }
-
-                        triggerConfetti();
-                        setCheckoutOrderId(razorpayOrderId);
-                        
-                        const isCartCheckout = checkoutItems.length === cart.length &&
-                          checkoutItems.every((item, idx) => item.id === cart[idx].id && item.qty === cart[idx].qty);
-                        if (isCartCheckout) {
-                          setCart([]);
-                        }
-
-                        fetchUserOrders(token);
-                        setCheckoutSuccess(true);
-                      } else {
-                        // Real Razorpay checkout flow
-                        const options = {
-                          key: key,
-                          amount: amount,
-                          currency: currency,
-                          name: "Fox & Lotus",
-                          description: "Makhana Seasoning Order",
-                          order_id: razorpayOrderId,
-                          handler: async (response) => {
-                            try {
-                              const verifyRes = await fetch('http://localhost:5000/api/orders/verify-payment', {
-                                method: 'POST',
-                                headers: {
-                                  'Content-Type': 'application/json',
-                                  'Authorization': `Bearer ${token}`
-                                },
-                                body: JSON.stringify({
-                                  razorpayOrderId: response.razorpay_order_id,
-                                  razorpayPaymentId: response.razorpay_payment_id,
-                                  razorpaySignature: response.razorpay_signature
-                                })
-                              });
-
-                              if (!verifyRes.ok) {
-                                const verifyErr = await verifyRes.json();
-                                throw new Error(verifyErr.message || 'Payment signature verification failed');
-                              }
-
-                              triggerConfetti();
-                              setCheckoutOrderId(response.razorpay_order_id);
-                              
-                              const isCartCheckout = checkoutItems.length === cart.length &&
-                                checkoutItems.every((item, idx) => item.id === cart[idx].id && item.qty === cart[idx].qty);
-                              if (isCartCheckout) {
-                                setCart([]);
-                              }
-
-                              fetchUserOrders(token);
-                              setCheckoutSuccess(true);
-                            } catch (err) {
-                              alert(err.message || 'Payment verification failed.');
-                            }
-                          },
-                          prefill: {
-                            name: user.name,
-                            email: user.email,
-                            contact: user.phone
-                          },
-                          theme: {
-                            color: "#ffd15c"
-                          }
-                        };
-
-                        const rzp = new window.Razorpay(options);
-                        rzp.open();
-                      }
-                    } catch (err) {
-                      alert('Checkout transaction failed: ' + err.message);
+                    const newOrder = {
+                      id: orderId,
+                      date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+                      items: checkoutItems.map(item => `${item.qty}x ${item.name}`).join(', '),
+                      total: finalTotal.toFixed(2),
+                      status: 'ROASTING'
+                    };
+                    const updatedOrders = [newOrder, ...ordersList];
+                    setOrdersList(updatedOrders);
+                    if (user) {
+                      localStorage.setItem(`soul_orders_${user.phone}`, JSON.stringify(updatedOrders));
                     }
+
+                    // Clear cart if checking out the cart items
+                    const isCartCheckout = checkoutItems.length === cart.length &&
+                      checkoutItems.every((item, idx) => item.id === cart[idx].id && item.qty === cart[idx].qty);
+                    if (isCartCheckout) {
+                      setCart([]);
+                    }
+
+                    setCheckoutSuccess(true);
                   }}
                   style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}
                 >
@@ -4371,9 +4175,7 @@ function App() {
                 onClick={() => {
                   playSound('laser', isMuted);
                   setUser(null);
-                  setToken('');
                   localStorage.removeItem('soul_user');
-                  localStorage.removeItem('soul_token');
                   setCart([]);
                   setWishlist([]);
                   setShowProfileModal(false);
