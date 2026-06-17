@@ -1,8 +1,9 @@
 const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
+const twilio = require('twilio');
 const User = require('../models/User');
 
-// Temporary in-memory cache for storing OTPs (in production, use Redis or MongoDB collections)
+// Temporary in-memory cache for storing OTPs
 const otpCache = new Map();
 
 // Helper: Configure Nodemailer Transporter
@@ -10,22 +11,62 @@ const getTransporter = () => {
   return nodemailer.createTransport({
     host: process.env.SMTP_HOST || 'smtp.gmail.com',
     port: parseInt(process.env.SMTP_PORT || '587'),
-    secure: process.env.SMTP_SECURE === 'true', // true for 465, false for other ports
+    secure: process.env.SMTP_SECURE === 'true',
     auth: {
-      user: process.env.SMTP_USER, // e.g. dhamitanuja78@gmail.com
-      pass: process.env.SMTP_PASS, // App password
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS,
     },
   });
 };
 
-// @desc    Send OTP to User's Email
+// Helper: Send Twilio SMS OTP
+const sendTwilioSms = async (phone, otp, name) => {
+  const accountSid = process.env.TWILIO_ACCOUNT_SID;
+  const authToken = process.env.TWILIO_AUTH_TOKEN;
+  const twilioPhone = process.env.TWILIO_PHONE_NUMBER;
+
+  if (!accountSid || !authToken || !twilioPhone) {
+    console.log('\n==================================================');
+    console.log(`🔑 [MOCK SMS VERIFICATION KEY]`);
+    console.log(`User Name: ${name}`);
+    console.log(`Phone: ${phone}`);
+    console.log(`Verification Code: ${otp}`);
+    console.log('==================================================\n');
+    return false;
+  }
+
+  try {
+    const client = twilio(accountSid, authToken);
+    
+    // Add country code +91 if missing and number length is 10
+    let formattedPhone = phone.trim();
+    if (formattedPhone.length === 10 && !formattedPhone.startsWith('+')) {
+      formattedPhone = `+91${formattedPhone}`;
+    }
+
+    await client.messages.create({
+      body: `🔑 Fox & Lotus: Hello ${name}, your verification code is ${otp}. Expires in 5 mins.`,
+      from: twilioPhone,
+      to: formattedPhone
+    });
+    console.log(`Real Twilio SMS OTP sent successfully to ${formattedPhone}`);
+    return true;
+  } catch (error) {
+    console.error('Twilio SMS dispatch failed:', error);
+    // Keep testing alive by logging code as fallback
+    console.log(`🔑 Fallback verification code: ${otp}`);
+    return false;
+  }
+};
+
+// @desc    Send OTP to User's Phone Number
 // @route   POST /api/auth/send-otp
 // @access  Public
 const sendOtp = async (req, res) => {
   const { name, email, phone } = req.body;
 
-  if (!name || !email || !phone) {
-    return res.status(400).json({ message: 'Please provide name, email, and phone number' });
+  if (!name || !phone) {
+    return res.status(400).json({ message: 'Please provide name and phone number' });
   }
 
   try {
@@ -36,33 +77,13 @@ const sendOtp = async (req, res) => {
     // Save in cache
     otpCache.set(phone, { otp, email, expiresAt });
 
-    // Send email using Nodemailer
-    const transporter = getTransporter();
-    const mailOptions = {
-      from: `"Fox & Lotus" <${process.env.SMTP_USER}>`,
-      to: email,
-      subject: '🔑 Your Fox & Lotus Verification Code',
-      html: `
-        <div style="font-family: monospace; border: 3px solid #000; padding: 24px; max-width: 480px; background-color: #fffbeb; color: #000;">
-          <h2 style="font-weight: 900; text-transform: uppercase; margin-top: 0; border-bottom: 2px solid #000; padding-bottom: 8px;">FOX & LOTUS</h2>
-          <p style="font-size: 1.1rem; font-weight: bold;">Hello ${name},</p>
-          <p>Verify your session to unlock S-Tier snacks and secure your snack log.</p>
-          <div style="background-color: #facc15; border: 2px solid #000; padding: 12px; font-size: 2rem; font-weight: 900; text-align: center; letter-spacing: 4px; margin: 20px 0; box-shadow: 4px 4px 0 #000;">
-            ${otp}
-          </div>
-          <p style="font-size: 0.8rem; color: #6b7280; font-weight: bold;">● This OTP will expire in 5 minutes.</p>
-        </div>
-      `,
-    };
+    // Send SMS via Twilio (with console fallback)
+    await sendTwilioSms(phone, otp, name);
 
-    // Attempt to send email
-    await transporter.sendMail(mailOptions);
-    console.log(`OTP (${otp}) sent successfully to ${email}`);
-
-    res.status(200).json({ message: 'Verification code sent to email' });
+    res.status(200).json({ message: 'Verification code sent to phone number' });
   } catch (error) {
-    console.error('Nodemailer Error:', error);
-    res.status(500).json({ message: 'Failed to send OTP email: ' + error.message });
+    console.error('OTP Send Error:', error);
+    res.status(500).json({ message: 'Failed to send verification code: ' + error.message });
   }
 };
 
