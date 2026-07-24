@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import './App.css';
+import NotFound from './NotFound';
 import {
   Sparkles,
   ShoppingCart,
@@ -57,9 +59,23 @@ import imgInstaPost4 from './assets/insta_post_4.png';
 import imgInstaPost5 from './assets/insta_post_5.png';
 import videoInstaPost4 from './assets/insta_post_4_video.mp4';
 
+// Global interaction flag to prevent Web Audio autoplay warnings on hover
+if (typeof window !== 'undefined') {
+  const unlockAudio = () => {
+    window.hasUserInteracted = true;
+    window.removeEventListener('click', unlockAudio);
+    window.removeEventListener('keydown', unlockAudio);
+    window.removeEventListener('touchstart', unlockAudio);
+  };
+  window.addEventListener('click', unlockAudio);
+  window.addEventListener('keydown', unlockAudio);
+  window.addEventListener('touchstart', unlockAudio);
+}
+
 // Web Audio API Sound Synthesizer (Zero dependencies!)
 const playSound = (type, isMuted) => {
   if (isMuted) return;
+  if (type === 'hover' && typeof window !== 'undefined' && !window.hasUserInteracted) return;
   try {
     const AudioContextClass = window.AudioContext || window.webkitAudioContext;
     if (!AudioContextClass) return;
@@ -237,7 +253,21 @@ function App() {
 
   // Global States
   const [flavor, setFlavor] = useState('cheese'); // cheese | chilli | salt
-  const [currentPage, setCurrentPage] = useState('home'); // home | catalog
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [currentPage, setCurrentPageRaw] = useState('home');
+
+  // Sync page state when URL changes
+  useEffect(() => {
+    const path = location.pathname.replace('/', '') || 'home';
+    setCurrentPageRaw(path);
+  }, [location]);
+
+  // Navigate to corresponding URL route
+  const setCurrentPage = (page) => {
+    if (page === 'home') navigate('/');
+    else navigate(`/${page}`);
+  };
   const [comparedFood, setComparedFood] = useState('chips'); // chips | popcorn | cheese_balls
 
   // Lo-Fi Cassette Player playlist (Verified 200 OK links)
@@ -607,7 +637,7 @@ function App() {
   const [instaFeed, setInstaFeed] = useState(fallbackFeed);
 
   useEffect(() => {
-    if (beholdFeedId) {
+    if (beholdFeedId && beholdFeedId.trim().length >= 10) {
       fetch(`https://feeds.behold.so/v1/projects/${beholdFeedId}`)
         .then(res => {
           if (!res.ok) throw new Error("Feed request failed");
@@ -1122,9 +1152,10 @@ function App() {
         </div>
       </header>
 
-      {currentPage === 'home' && (
-        <>
-          {/* 2. DYNAMIC HERO SECTION (PSYCHEDELIC POP ART + NEO BRUTALIST) */}
+      <Routes>
+        <Route path="/" element={
+          <>
+            {/* 2. DYNAMIC HERO SECTION (PSYCHEDELIC POP ART + NEO BRUTALIST) */}
       <section className="y2k-grid" style={{ position: 'relative', overflow: 'hidden' }}>
         {/* Floating Background Cyber shapes */}
         <div className="organic-blob animate-float-slow desktop-only" style={{
@@ -1427,10 +1458,10 @@ function App() {
 
 
         </>
-      )}
+      } />
 
       {/* 4. PRODUCT SHOWCASE (EXPERIMENTAL E-COMMERCE CARDS) */}
-      {currentPage === 'catalog' && (
+      <Route path="/catalog" element={
         <section id="products-showcase" style={{
           padding: '80px 0 100px 0',
           backgroundColor: 'var(--color-cream)',
@@ -1615,10 +1646,11 @@ function App() {
           </div>
         </div>
       </section>
-      )}
+      } />
 
       {/* PRODUCT DETAIL PAGE */}
-      {currentPage === 'product-detail' && selectedProduct && (
+      <Route path="/product-detail" element={
+        selectedProduct ? (
         <section className="product-detail-page-section" style={{
           padding: '80px 0 120px 0',
           backgroundColor: 'var(--theme-bg)',
@@ -1987,10 +2019,12 @@ function App() {
             </div>
           </div>
         </section>
-      )}
+        ) : null
+      } />
 
       {/* CHECKOUT PAGE */}
-      {currentPage === 'checkout' && checkoutItems.length > 0 && (
+      <Route path="/checkout" element={
+        checkoutItems.length > 0 ? (
         <section className="checkout-page-section" style={{
           padding: '80px 0 120px 0',
           backgroundColor: 'var(--color-cream)',
@@ -2629,10 +2663,11 @@ function App() {
 
           </div>
         </section>
-      )}
+        ) : null
+      } />
 
       {/* WISHLIST PAGE */}
-      {currentPage === 'wishlist' && (
+      <Route path="/wishlist" element={
         <section className="wishlist-page-section" style={{ position: 'relative', overflow: 'hidden' }}>
           {/* Y2K Grid Background */}
           <div className="y2k-grid" style={{ position: 'absolute', inset: 0, opacity: 0.08, pointerEvents: 'none' }}></div>
@@ -2776,9 +2811,10 @@ function App() {
             )}
           </div>
         </section>
-      )}
+      } />
 
-      {currentPage === 'customized' && (
+      {/* CUSTOMIZED PAGE */}
+      <Route path="/customized" element={
         <section className="customized-page-section" style={{
           minHeight: '100vh',
           padding: '80px 0 140px',
@@ -3044,9 +3080,12 @@ function App() {
             )}
           </div>
         </section>
-      )}
+      } />
+      <Route path="*" element={<NotFound playSound={playSound} isMuted={isMuted} />} />
+    </Routes>
 
-      {currentPage === 'home' && (
+    <Routes>
+      <Route path="/" element={
         <>
 
 
@@ -3539,9 +3578,10 @@ function App() {
           </div>
         </div>
       </section>
-
         </>
-      )}
+      } />
+      <Route path="*" element={null} />
+    </Routes>
 
       {/* 8. SHOPPING CART SIDEBAR MODAL (EXPERIMENTAL BRUTALIST BASKET) */}
       {isCartOpen && (
